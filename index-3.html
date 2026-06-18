@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>RoadLog — Trip Timeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --asphalt:#1D2027;
+    --asphalt-light:#272B34;
+    --asphalt-lighter:#323743;
+    --amber:#E8A33D;
+    --amber-dim:#9C7232;
+    --teal:#3E8073;
+    --rust:#C45B3F;
+    --cream:#F2EDE4;
+    --cream-dim:#9A9690;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--asphalt); color:var(--cream); font-family:'Inter',sans-serif; height:100%; overflow-x:hidden;}
+  button{font-family:inherit; border:none; cursor:pointer; background:none; color:inherit;}
+  input, textarea{font-family:inherit; background:var(--asphalt-lighter); border:1px solid #454b58; color:var(--cream); border-radius:8px; padding:10px 12px; font-size:15px; width:100%;}
+  input:focus, textarea:focus{outline:2px solid var(--amber);}
+
+  .app{display:flex; flex-direction:column; height:100vh; height:100dvh; max-width:560px; margin:0 auto; position:relative;}
+
+  header{padding:18px 20px 14px; border-bottom:1px solid #2E323C; flex-shrink:0;}
+  .header-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;}
+  .lang-toggle{flex-shrink:0; background:var(--asphalt-light); border:1px solid #454b58; color:var(--cream); padding:8px 13px; border-radius:20px; font-size:13px; font-weight:700; margin-top:2px;}
+  header h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; margin:0; letter-spacing:0.3px;}
+  header h1 .dot{color:var(--amber);}
+  header p{margin:4px 0 0; font-size:13px; color:var(--cream-dim);}
+
+  .tabs{display:flex; gap:6px; padding:12px 20px 0;}
+  .tab{padding:8px 14px; border-radius:20px; font-size:13px; font-weight:600; color:var(--cream-dim); background:var(--asphalt-light);}
+  .tab.active{color:var(--asphalt); background:var(--amber);}
+
+  main{flex:1; overflow-y:auto; padding:16px 20px 140px;}
+
+  /* ---- live status panel ---- */
+  .status-panel{background:var(--asphalt-light); border-radius:14px; padding:18px; margin-bottom:18px; border:1px solid #2E323C;}
+
+  /* ---- vehicle picker ---- */
+  .vehicle-bar{margin-bottom:14px;}
+  .vehicle-label{font-size:12px; color:var(--cream-dim); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:8px;}
+  .vehicle-chips{display:flex; gap:8px; flex-wrap:wrap;}
+  .vehicle-chip{padding:9px 14px; border-radius:20px; background:var(--asphalt-light); border:1px solid #3a3f4a; font-size:13.5px; font-weight:600; color:var(--cream-dim);}
+  .vehicle-chip.selected{background:var(--teal); color:var(--cream); border-color:var(--teal);}
+  .vehicle-chip.add-new{background:none; border:1px dashed #4a505c; color:var(--cream-dim);}
+  .vehicle-bar.locked .vehicle-chip{opacity:0.55; pointer-events:none;}
+  .vehicle-bar.locked .vehicle-chip.selected{opacity:1;}
+  .status-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;}
+  .status-row:last-child{margin-bottom:0;}
+  .status-label{font-size:12px; color:var(--cream-dim); text-transform:uppercase; letter-spacing:0.6px;}
+  .status-value{font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:500;}
+  .status-state{display:flex; align-items:center; gap:8px; margin-bottom:14px;}
+  .pulse{width:10px; height:10px; border-radius:50%; background:#555;}
+  .pulse.moving{background:var(--teal); box-shadow:0 0 0 0 rgba(62,128,115,0.6); animation:pulse 1.6s infinite;}
+  .pulse.stopped{background:var(--amber); box-shadow:0 0 0 0 rgba(232,163,61,0.6); animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(232,163,61,0.5);}70%{box-shadow:0 0 0 10px rgba(232,163,61,0);}100%{box-shadow:0 0 0 0 rgba(232,163,61,0);}}
+  .state-text{font-size:14px; font-weight:600;}
+  .gps-warning{font-size:12px; color:var(--rust); margin-top:10px;}
+
+  /* ---- empty state ---- */
+  .empty{text-align:center; padding:60px 20px; color:var(--cream-dim);}
+  .empty h2{font-family:'Space Grotesk',sans-serif; color:var(--cream); font-size:18px; margin:0 0 8px;}
+  .empty p{font-size:14px; line-height:1.5; margin:0;}
+
+  /* ---- timeline (road line signature) ---- */
+  .timeline{position:relative; padding-left:34px;}
+  .road-line{position:absolute; left:9px; top:6px; bottom:6px; width:2px; background-image:repeating-linear-gradient(to bottom, var(--amber-dim) 0, var(--amber-dim) 8px, transparent 8px, transparent 16px);}
+  .waypoint{position:relative; margin-bottom:22px;}
+  .waypoint:last-child{margin-bottom:0;}
+  .wp-dot{position:absolute; left:-34px; top:4px; width:20px; height:20px; border-radius:50%; background:var(--amber); border:3px solid var(--asphalt); display:flex; align-items:center; justify-content:center;}
+  .wp-dot.open{background:var(--teal); animation:pulse 1.6s infinite;}
+  .wp-card{background:var(--asphalt-light); border-radius:12px; padding:14px 16px; border:1px solid #2E323C;}
+  .wp-time{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--amber); font-weight:600;}
+  .wp-place{font-size:16px; font-weight:600; margin:4px 0 2px; background:none; border:none; width:100%; padding:0; color:var(--cream); font-family:'Inter',sans-serif;}
+  .wp-place:focus{outline:none; border-bottom:1px solid var(--amber);}
+  .wp-meta{font-size:12.5px; color:var(--cream-dim); margin-top:4px;}
+  .wp-note{margin-top:8px;}
+  .wp-note input{font-size:13px; padding:7px 10px; background:var(--asphalt-lighter);}
+  .input-with-mic{display:flex; gap:6px; align-items:center;}
+  .input-with-mic input{flex:1;}
+  .mic-btn{flex-shrink:0; width:32px; height:32px; border-radius:50%; background:var(--asphalt-lighter); border:1px solid #454b58; font-size:14px; display:flex; align-items:center; justify-content:center;}
+  .mic-btn.listening{background:var(--rust); animation:pulse 1.2s infinite;}
+  .wp-quickpick{margin-top:8px; font-size:13px; padding:8px 10px; background:var(--asphalt-lighter); color:var(--amber); font-weight:600; border-radius:8px;}
+  .wp-dist{font-size:11px; color:var(--cream-dim); margin:6px 0 0 -34px; padding-left:34px; font-family:'IBM Plex Mono',monospace;}
+  .wp-delete{position:absolute; right:14px; top:14px; font-size:11px; color:var(--rust); font-weight:600;}
+
+  /* ---- trip history list ---- */
+  .trip-card{background:var(--asphalt-light); border-radius:12px; padding:16px; margin-bottom:12px; border:1px solid #2E323C;}
+  .trip-card-top{display:flex; justify-content:space-between; align-items:center;}
+  .trip-vehicle-badge{font-size:11px; font-weight:700; color:var(--amber); background:rgba(232,163,61,0.12); padding:4px 9px; border-radius:8px;}
+  .history-filter{width:100%; margin-bottom:14px; font-weight:600;}
+  .trip-date{font-weight:600; font-size:15px;}
+  .trip-stats{display:flex; gap:16px; margin-top:8px; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--cream-dim);}
+  .trip-stats b{color:var(--cream); font-weight:600;}
+  .trip-actions{display:flex; gap:10px; margin-top:12px;}
+  .chip-btn{font-size:12px; font-weight:600; padding:7px 12px; border-radius:8px; background:var(--asphalt-lighter); color:var(--cream);}
+  .chip-btn.amber{background:var(--amber); color:var(--asphalt);}
+
+  /* ---- bottom action bar ---- */
+  .action-bar{position:absolute; left:0; right:0; bottom:0; padding:14px 20px max(22px, env(safe-area-inset-bottom)); background:linear-gradient(to top, var(--asphalt) 60%, transparent); display:flex; gap:10px; max-width:560px; margin:0 auto;}
+  .btn-main{flex:1; padding:16px; border-radius:14px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; text-align:center; background:var(--amber); color:var(--asphalt);}
+  .btn-main.stop-state{background:var(--rust); color:var(--cream);}
+  .btn-secondary{padding:16px 18px; border-radius:14px; background:var(--asphalt-lighter); color:var(--cream); font-weight:600; font-size:14px; border:1px solid #454b58;}
+  .btn-secondary:disabled{opacity:0.4;}
+
+  .hidden{display:none !important;}
+  .toast{position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--cream); color:var(--asphalt); padding:10px 18px; border-radius:30px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.3); z-index:50; opacity:0; transition:opacity 0.25s;}
+  .toast.show{opacity:1;}
+
+  /* ---- map tab ---- */
+  .map-search-bar{display:flex; gap:8px; padding:14px 20px; background:var(--asphalt); border-bottom:1px solid #2E323C; flex-shrink:0;}
+  .map-search-bar input{flex:1;}
+  .map-search-bar button{background:var(--amber); color:var(--asphalt); font-weight:700; padding:0 16px; border-radius:8px; font-size:14px;}
+  .map-search-bar .mic-btn{background:var(--asphalt-lighter); color:var(--cream); padding:0; width:42px;}
+  #leafletMap{position:absolute; top:0; left:0; right:0; bottom:0; background:#2B313C;}
+  .map-canvas-wrap{position:relative; flex:1; min-height:0;}
+  .route-info{position:absolute; left:16px; right:16px; bottom:108px; background:var(--asphalt-light); border:1px solid #2E323C; border-radius:14px; padding:14px 16px; box-shadow:0 6px 18px rgba(0,0,0,0.35); max-width:528px; margin:0 auto;}
+  .route-info .ri-name{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .route-info .ri-stats{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--cream-dim);}
+  .route-info .ri-close{position:absolute; top:10px; right:12px; font-size:12px; color:var(--cream-dim); font-weight:600;}
+  .ri-actions{display:flex; gap:8px; margin-top:10px;}
+  .ri-actions .chip-btn{flex:1; text-align:center;}
+  #followBtn.active{background:var(--teal); color:var(--cream);}
+  .ri-directions{margin-top:12px; max-height:180px; overflow-y:auto; border-top:1px solid #3a3f4a; padding-top:10px;}
+  .ri-step{display:flex; gap:10px; padding:7px 0; font-size:13px;}
+  .ri-step.current{color:var(--amber); font-weight:600;}
+  .ri-step .ri-step-dist{flex-shrink:0; width:54px; color:var(--cream-dim); font-family:'IBM Plex Mono',monospace; font-size:12px;}
+  .map-locate-btn{position:absolute; right:16px; top:14px; background:var(--asphalt-light); border:1px solid #2E323C; border-radius:50%; width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:18px; z-index:5; box-shadow:0 4px 10px rgba(0,0,0,0.3);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>Road<span class="dot">Log</span></h1>
+        <p>Automatic stop tracking for your drives</p>
+      </div>
+      <button class="lang-toggle" id="langToggleBtn" onclick="toggleDictationLang()">🎤 EN</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" id="tabLive" onclick="switchTab('live')">Current trip</button>
+    <button class="tab" id="tabMap" onclick="switchTab('map')">Map</button>
+    <button class="tab" id="tabHistory" onclick="switchTab('history')">Trip history</button>
+  </div>
+
+  <main id="mainLive">
+    <div class="vehicle-bar">
+      <div class="vehicle-label">Driving today</div>
+      <div class="vehicle-chips" id="vehicleChips"></div>
+    </div>
+
+    <div class="status-panel">
+      <div class="status-state">
+        <div class="pulse" id="pulseDot"></div>
+        <div class="state-text" id="stateText">Not tracking</div>
+      </div>
+      <div class="status-row"><span class="status-label">Elapsed</span><span class="status-value" id="statElapsed">00:00:00</span></div>
+      <div class="status-row"><span class="status-label">Distance</span><span class="status-value" id="statDistance">0.0 km</span></div>
+      <div class="status-row"><span class="status-label">Stops logged</span><span class="status-value" id="statStops">0</span></div>
+      <div class="gps-warning hidden" id="gpsWarning"></div>
+    </div>
+
+    <div id="emptyLive" class="empty">
+      <h2>No active trip</h2>
+      <p>Tap "Start trip" below before you drive off. Keep this page open on screen — tracking pauses if your phone locks or you leave the browser.</p>
+    </div>
+
+    <div class="timeline hidden" id="liveTimeline">
+      <div class="road-line"></div>
+      <div id="liveWaypoints"></div>
+    </div>
+  </main>
+
+  <main id="mainHistory" class="hidden">
+    <select id="historyVehicleFilterSelect" class="history-filter hidden" onchange="historyVehicleFilter=this.value; renderHistory();"></select>
+    <div id="historyList"></div>
+    <div class="empty hidden" id="emptyHistory">
+      <h2>No trips yet</h2>
+      <p>Trips you finish will be saved here, and you can export any of them as a text report.</p>
+    </div>
+  </main>
+
+  <main id="mainMap" class="hidden" style="padding:0; display:flex; flex-direction:column;">
+    <div class="map-search-bar">
+      <input id="mapDestInput" placeholder="Where to?" onkeydown="if(event.key==='Enter') searchDestination()">
+      <button class="mic-btn" type="button" onclick="dictateInto(this, document.getElementById('mapDestInput'))" title="Speak your destination">🎤</button>
+      <button onclick="searchDestination()">Go</button>
+    </div>
+    <div class="map-canvas-wrap">
+      <div id="leafletMap"></div>
+      <button class="map-locate-btn" onclick="locateMe()" title="Find me">📍</button>
+      <div class="route-info hidden" id="routeInfo">
+        <button class="ri-close" onclick="clearRoute()">clear ✕</button>
+        <div class="ri-name" id="riName"></div>
+        <div class="ri-stats" id="riStats"></div>
+        <div class="ri-actions">
+          <button class="chip-btn" onclick="toggleDirections()">Directions</button>
+          <button class="chip-btn amber" id="followBtn" onclick="toggleFollowNarrate()">▶ Follow &amp; narrate</button>
+        </div>
+        <div class="ri-directions hidden" id="riDirections"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="action-bar">
+    <button class="btn-secondary" id="addStopBtn" onclick="manualAddStop()" disabled>+ Add stop</button>
+    <button class="btn-main" id="mainBtn" onclick="toggleTrip()">Start trip</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ---------------- State ---------------- */
+let tracking = false;
+let watchId = null;
+let trip = null;          // current trip object
+let lastFix = null;       // last accepted GPS fix {lat,lng,t}
+let lowSpeedSince = null; // timestamp when speed first dropped below threshold
+let openStop = null;      // stop currently in progress (not yet closed)
+let elapsedTimer = null;
+
+const STOP_SPEED_MS = 1.4;       // ~5 km/h
+const STOP_CONFIRM_MS = 150000;  // 2.5 min of slow speed before we call it a "stop"
+const RESUME_SPEED_MS = 2.2;     // ~8 km/h to confirm movement resumed
+const MIN_ACCURACY_M = 60;       // ignore fixes worse than this
+
+let trips = loadTrips();
+let savedPlaces = loadPlaces(); // [{id, name, lat, lng}] — your personal list of frequent places
+let vehicles = loadVehicles();           // [{id, name}]
+let currentVehicleId = loadCurrentVehicle(); // which one is selected right now
+
+function loadVehicles(){
+  try{
+    const raw = localStorage.getItem('roadlog_vehicles');
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveVehicles(){
+  try{ localStorage.setItem('roadlog_vehicles', JSON.stringify(vehicles)); }catch(e){}
+}
+function loadCurrentVehicle(){
+  try{ return localStorage.getItem('roadlog_current_vehicle') || null; }catch(e){ return null; }
+}
+function saveCurrentVehicle(){
+  try{ localStorage.setItem('roadlog_current_vehicle', currentVehicleId || ''); }catch(e){}
+}
+function currentVehicleName(){
+  const v = vehicles.find(v=>v.id===currentVehicleId);
+  return v ? v.name : 'Unspecified vehicle';
+}
+function selectVehicle(id){
+  if(tracking) return; // locked mid-trip
+  currentVehicleId = id;
+  saveCurrentVehicle();
+  renderVehicleChips();
+}
+function addVehicle(){
+  if(tracking) return;
+  const name = prompt('Name this vehicle (e.g. "Truck", "Bakkie", "Sedan"):');
+  if(name && name.trim()){
+    const v = {id:uid(), name:name.trim()};
+    vehicles.push(v);
+    saveVehicles();
+    currentVehicleId = v.id;
+    saveCurrentVehicle();
+    renderVehicleChips();
+  }
+}
+function renderVehicleChips(){
+  const wrap = document.getElementById('vehicleChips');
+  if(!wrap) return;
+  document.querySelector('.vehicle-bar').classList.toggle('locked', tracking);
+  wrap.innerHTML = vehicles.map(v=>`
+    <button class="vehicle-chip ${v.id===currentVehicleId?'selected':''}" onclick="selectVehicle('${v.id}')">${escapeHtml(v.name)}</button>
+  `).join('') + `<button class="vehicle-chip add-new" onclick="addVehicle()">+ Add vehicle</button>`;
+}
+
+function loadPlaces(){
+  try{
+    const raw = localStorage.getItem('roadlog_places');
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function savePlaces(){
+  try{ localStorage.setItem('roadlog_places', JSON.stringify(savedPlaces)); }
+  catch(e){ /* ignore — non-critical */ }
+}
+function nearbyPlaces(lat, lng, maxKm){
+  if(lat==null) return [];
+  return savedPlaces
+    .map(p=>({...p, dist: haversine(lat,lng,p.lat,p.lng)}))
+    .filter(p=>p.dist <= maxKm)
+    .sort((a,b)=>a.dist-b.dist);
+}
+function addSavedPlace(name, lat, lng){
+  if(!name || lat==null) return;
+  savedPlaces.push({id:uid(), name, lat, lng});
+  savePlaces();
+}
+
+/* ---------------- Storage ---------------- */
+function loadTrips(){
+  try{
+    const raw = localStorage.getItem('roadlog_trips');
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveTrips(){
+  try{ localStorage.setItem('roadlog_trips', JSON.stringify(trips)); }
+  catch(e){ showToast("Couldn't save — export trips before closing the app"); }
+}
+
+/* ---------------- Helpers ---------------- */
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371;
+  const dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function fmtTime(ts){ return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function fmtDate(ts){ return new Date(ts).toLocaleDateString([], {weekday:'short', day:'numeric', month:'short'}); }
+function fmtDur(ms){
+  const s=Math.floor(ms/1000); const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60);
+  if(h>0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+function fmtElapsed(ms){
+  const s=Math.floor(ms/1000);
+  const h=String(Math.floor(s/3600)).padStart(2,'0');
+  const m=String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const sec=String(s%60).padStart(2,'0');
+  return `${h}:${m}:${sec}`;
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function uid(){ return Date.now()+'_'+Math.random().toString(36).slice(2,7); }
+
+/* ---------------- Voice dictation ---------------- */
+let dictationLang = loadDictationLang();
+
+function loadDictationLang(){
+  try{ return localStorage.getItem('roadlog_dictation_lang') || 'en-ZA'; }catch(e){ return 'en-ZA'; }
+}
+function saveDictationLang(){
+  try{ localStorage.setItem('roadlog_dictation_lang', dictationLang); }catch(e){}
+}
+function toggleDictationLang(){
+  dictationLang = (dictationLang === 'en-ZA') ? 'af-ZA' : 'en-ZA';
+  saveDictationLang();
+  updateLangToggleLabel();
+  showToast(dictationLang==='af-ZA' ? 'Voice input set to Afrikaans' : 'Voice input set to English');
+}
+function updateLangToggleLabel(){
+  const btn = document.getElementById('langToggleBtn');
+  if(btn) btn.textContent = dictationLang==='af-ZA' ? '🎤 AF' : '🎤 EN';
+}
+
+function dictateInto(btnEl, inputEl){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ showToast("Voice input isn't supported in this browser"); return; }
+  if(btnEl.classList.contains('listening')) return; // already listening, ignore double-tap
+
+  const recognition = new SR();
+  recognition.lang = dictationLang;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  btnEl.classList.add('listening');
+  showToast('Listening…');
+
+  recognition.onresult = (e)=>{
+    const text = e.results[0][0].transcript;
+    inputEl.value = text;
+    inputEl.dispatchEvent(new Event('change', {bubbles:true}));
+  };
+  recognition.onerror = ()=>{ showToast("Didn't catch that — try again"); };
+  recognition.onend = ()=>{ btnEl.classList.remove('listening'); };
+
+  try{ recognition.start(); }
+  catch(e){ btnEl.classList.remove('listening'); showToast('Voice input failed to start'); }
+}
+
+/* ---------------- Reverse geocoding ---------------- */
+async function reverseGeocode(lat,lng){
+  try{
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16`);
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    if(data && data.address){
+      const a = data.address;
+      return a.road ? `${a.road}${a.suburb? ', '+a.suburb : ''}` : (data.display_name ? data.display_name.split(',').slice(0,2).join(',') : 'Unnamed stop');
+    }
+  }catch(e){ /* offline or blocked — fall through */ }
+  return `Stop near ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
+
+/* ---------------- Trip control ---------------- */
+function toggleTrip(){
+  if(!tracking) startTrip(); else endTrip();
+}
+
+function startTrip(){
+  if(!navigator.geolocation){
+    showToast("This browser can't access GPS");
+    return;
+  }
+  trip = { id: uid(), startTime: Date.now(), endTime:null, distanceKm:0, stops:[], vehicleName: currentVehicleName() };
+  lastFix = null; lowSpeedSince = null; openStop = null;
+  resetBreadcrumb();
+  tracking = true;
+  document.getElementById('mainBtn').textContent = 'End trip';
+  document.getElementById('mainBtn').classList.add('stop-state');
+  document.getElementById('addStopBtn').disabled = false;
+  document.getElementById('emptyLive').classList.add('hidden');
+  document.getElementById('liveTimeline').classList.remove('hidden');
+  document.getElementById('gpsWarning').classList.add('hidden');
+  renderVehicleChips();
+  setState('moving', `Tracking ${trip.vehicleName} — drive safely`);
+
+  watchId = navigator.geolocation.watchPosition(onPosition, onPosError, {
+    enableHighAccuracy:true, maximumAge:0, timeout:15000
+  });
+
+  elapsedTimer = setInterval(updateElapsed, 1000);
+  renderLiveWaypoints();
+}
+
+function endTrip(){
+  if(openStop){ closeOpenStop(Date.now()); }
+  tracking = false;
+  navigator.geolocation.clearWatch(watchId);
+  clearInterval(elapsedTimer);
+  trip.endTime = Date.now();
+  trips.unshift(trip);
+  saveTrips();
+  showToast('Trip saved to history');
+  trip = null;
+  document.getElementById('mainBtn').textContent = 'Start trip';
+  document.getElementById('mainBtn').classList.remove('stop-state');
+  document.getElementById('addStopBtn').disabled = true;
+  document.getElementById('liveTimeline').classList.add('hidden');
+  document.getElementById('emptyLive').classList.remove('hidden');
+  setState('', 'Not tracking');
+  document.getElementById('pulseDot').className='pulse';
+  document.getElementById('statElapsed').textContent='00:00:00';
+  document.getElementById('statDistance').textContent='0.0 km';
+  document.getElementById('statStops').textContent='0';
+  renderVehicleChips();
+  renderHistory();
+}
+
+function setState(kind, text){
+  document.getElementById('stateText').textContent = text;
+  document.getElementById('pulseDot').className = 'pulse' + (kind?' '+kind:'');
+}
+
+function updateElapsed(){
+  if(!trip) return;
+  document.getElementById('statElapsed').textContent = fmtElapsed(Date.now()-trip.startTime);
+}
+
+function onPosError(err){
+  document.getElementById('gpsWarning').classList.remove('hidden');
+  document.getElementById('gpsWarning').textContent = 'GPS signal lost or permission denied — ' + err.message;
+}
+
+function onPosition(pos){
+  document.getElementById('gpsWarning').classList.add('hidden');
+  const {latitude:lat, longitude:lng, accuracy, speed} = pos.coords;
+  const now = pos.timestamp || Date.now();
+
+  if(accuracy && accuracy > MIN_ACCURACY_M){ return; } // ignore noisy fix
+
+  let currentSpeed = speed; // m/s, may be null
+  if(currentSpeed == null && lastFix){
+    const distKm = haversine(lastFix.lat,lastFix.lng,lat,lng);
+    const dtS = (now-lastFix.t)/1000;
+    currentSpeed = dtS>0 ? (distKm*1000)/dtS : 0;
+  }
+  if(currentSpeed == null) currentSpeed = 0;
+
+  if(lastFix){
+    const distKm = haversine(lastFix.lat,lastFix.lng,lat,lng);
+    if(distKm < 2){ trip.distanceKm += distKm; } // ignore absurd GPS jumps
+    document.getElementById('statDistance').textContent = trip.distanceKm.toFixed(1)+' km';
+  }
+  lastFix = {lat,lng,t:now};
+  updateLiveMapPosition(lat,lng);
+
+  if(currentSpeed < STOP_SPEED_MS){
+    if(lowSpeedSince == null) lowSpeedSince = now;
+    if(!openStop && (now - lowSpeedSince) >= STOP_CONFIRM_MS){
+      openStop = { id:uid(), arrive: lowSpeedSince, leave:null, lat, lng, placeName:'Locating…', note:'' };
+      trip.stops.push(openStop);
+      setState('stopped','Stopped');
+      renderLiveWaypoints();
+      const knownMatch = nearbyPlaces(lat,lng,0.15)[0]; // within 150m of a saved place
+      if(knownMatch){
+        openStop.placeName = knownMatch.name;
+        renderLiveWaypoints();
+      } else {
+        reverseGeocode(lat,lng).then(name=>{
+          if(openStop && openStop.placeName==='Locating…'){ openStop.placeName = name; renderLiveWaypoints(); }
+        });
+      }
+    }
+  } else {
+    if(currentSpeed >= RESUME_SPEED_MS){
+      lowSpeedSince = null;
+      if(openStop){ closeOpenStop(now); setState('moving','Tracking — drive safely'); renderLiveWaypoints(); }
+    }
+  }
+}
+
+function closeOpenStop(time){
+  if(!openStop) return;
+  openStop.leave = time;
+  openStop = null;
+  document.getElementById('statStops').textContent = trip.stops.length;
+}
+
+function manualAddStop(){
+  if(!trip) return;
+  const lat = lastFix ? lastFix.lat : null;
+  const lng = lastFix ? lastFix.lng : null;
+  const knownMatch = nearbyPlaces(lat,lng,0.15)[0];
+  const s = { id:uid(), arrive: Date.now(), leave: Date.now(), lat, lng, placeName: knownMatch ? knownMatch.name : 'New stop (tap to rename)', note:'', manual:true };
+  trip.stops.push(s);
+  document.getElementById('statStops').textContent = trip.stops.length;
+  renderLiveWaypoints();
+  if(!knownMatch && lat!=null){ reverseGeocode(lat,lng).then(name=>{ if(s.placeName.startsWith('New stop')){ s.placeName=name; renderLiveWaypoints(); } }); }
+}
+
+/* ---------------- Rendering: live timeline ---------------- */
+function renderLiveWaypoints(){
+  const wrap = document.getElementById('liveWaypoints');
+  wrap.innerHTML = '';
+  trip.stops.forEach((s, idx)=>{
+    wrap.appendChild(renderWaypointCard(s, idx, true));
+  });
+}
+
+function renderWaypointCard(s, idx, isLive){
+  const div = document.createElement('div');
+  div.className = 'waypoint';
+  const isOpen = !s.leave;
+  const placeOptions = savedPlaces.map(p=>`<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+  div.innerHTML = `
+    <div class="wp-dot ${isOpen?'open':''}"></div>
+    <div class="wp-card">
+      ${isLive?`<button class="wp-delete" onclick="deleteStop('${s.id}')">remove</button>`:''}
+      <div class="wp-time">${fmtTime(s.arrive)} ${s.leave? '– '+fmtTime(s.leave) : '– still here'}</div>
+      <div class="input-with-mic">
+        <input class="wp-place" value="${escapeHtml(s.placeName)}" onchange="renameStop('${s.id}', this.value)">
+        <button class="mic-btn" type="button" onclick="dictateInto(this, this.previousElementSibling)" title="Speak the place name">🎤</button>
+      </div>
+      ${isLive ? `<select class="wp-quickpick" onchange="pickPlace('${s.id}', this)">
+        <option value="" selected disabled>Tap a saved place…</option>
+        ${placeOptions}
+        <option value="__new__">+ Save this stop as a new place</option>
+      </select>` : ''}
+      <div class="wp-meta">${s.leave ? 'Stayed '+fmtDur(s.leave-s.arrive) : 'In progress'}</div>
+      <div class="wp-note input-with-mic">
+        <input placeholder="Add note (e.g. client name)" value="${escapeHtml(s.note||'')}" onchange="noteStop('${s.id}', this.value)">
+        <button class="mic-btn" type="button" onclick="dictateInto(this, this.previousElementSibling)" title="Speak your note">🎤</button>
+      </div>
+    </div>`;
+  return div;
+}
+
+function pickPlace(stopId, selectEl){
+  const value = selectEl.value;
+  const s = trip?.stops.find(s=>s.id===stopId) || findStopInHistory(stopId);
+  if(!s) return;
+  if(value === '__new__'){
+    const name = prompt('Name this place (e.g. "Season Solar", "Joburg office"):', s.placeName.startsWith('New stop')||s.placeName.startsWith('Stop near')||s.placeName==='Locating…' ? '' : s.placeName);
+    if(name && name.trim()){
+      s.placeName = name.trim();
+      if(s.lat!=null) addSavedPlace(name.trim(), s.lat, s.lng);
+    }
+  } else if(value){
+    s.placeName = value;
+  }
+  selectEl.selectedIndex = 0;
+  saveTrips();
+  if(trip) renderLiveWaypoints();
+}
+
+function escapeHtml(str){ return (str||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renameStop(id, value){
+  const s = trip?.stops.find(s=>s.id===id) || findStopInHistory(id);
+  if(s){ s.placeName = value; saveTrips(); }
+}
+function noteStop(id, value){
+  const s = trip?.stops.find(s=>s.id===id) || findStopInHistory(id);
+  if(s){ s.note = value; saveTrips(); }
+}
+function findStopInHistory(id){
+  for(const t of trips){ const s=t.stops.find(s=>s.id===id); if(s) return s; }
+  return null;
+}
+function deleteStop(id){
+  if(!trip) return;
+  trip.stops = trip.stops.filter(s=>s.id!==id);
+  document.getElementById('statStops').textContent = trip.stops.length;
+  renderLiveWaypoints();
+}
+
+/* ---------------- Tabs ---------------- */
+function switchTab(which){
+  document.getElementById('tabLive').classList.toggle('active', which==='live');
+  document.getElementById('tabMap').classList.toggle('active', which==='map');
+  document.getElementById('tabHistory').classList.toggle('active', which==='history');
+  document.getElementById('mainLive').classList.toggle('hidden', which!=='live');
+  document.getElementById('mainMap').classList.toggle('hidden', which!=='map');
+  document.getElementById('mainHistory').classList.toggle('hidden', which!=='history');
+  if(which==='history') renderHistory();
+  if(which==='map'){
+    initMap();
+    setTimeout(()=>{ if(map) map.invalidateSize(); }, 150);
+  }
+}
+
+/* ---------------- History ---------------- */
+let historyVehicleFilter = 'all';
+
+function renderVehicleFilter(){
+  const sel = document.getElementById('historyVehicleFilterSelect');
+  const names = [...new Set(trips.map(t=>t.vehicleName||'Unspecified vehicle'))];
+  if(names.length <= 1){ sel.classList.add('hidden'); return; }
+  sel.classList.remove('hidden');
+  sel.innerHTML = `<option value="all">All vehicles</option>` + names.map(n=>`<option value="${escapeHtml(n)}" ${historyVehicleFilter===n?'selected':''}>${escapeHtml(n)}</option>`).join('');
+  sel.value = historyVehicleFilter;
+}
+
+function renderHistory(){
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('emptyHistory');
+  list.innerHTML = '';
+  renderVehicleFilter();
+
+  const visible = historyVehicleFilter==='all' ? trips : trips.filter(t=>(t.vehicleName||'Unspecified vehicle')===historyVehicleFilter);
+
+  if(trips.length===0){ empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  if(visible.length===0){ list.innerHTML = `<div class="empty"><p>No trips logged for this vehicle yet.</p></div>`; return; }
+
+  visible.forEach(t=>{
+    const card = document.createElement('div');
+    card.className = 'trip-card';
+    const dur = (t.endTime||Date.now()) - t.startTime;
+    card.innerHTML = `
+      <div class="trip-card-top">
+        <div class="trip-date">${fmtDate(t.startTime)} · ${fmtTime(t.startTime)}</div>
+        <div class="trip-vehicle-badge">${escapeHtml(t.vehicleName||'Unspecified vehicle')}</div>
+      </div>
+      <div class="trip-stats">
+        <div><b>${t.distanceKm.toFixed(1)} km</b></div>
+        <div><b>${fmtDur(dur)}</b></div>
+        <div><b>${t.stops.length}</b> stops</div>
+      </div>
+      <div class="trip-actions">
+        <button class="chip-btn" onclick="toggleExpand('${t.id}')">View timeline</button>
+        <button class="chip-btn amber" onclick="exportTripPDF('${t.id}')">Share PDF</button>
+        <button class="chip-btn" onclick="deleteTrip('${t.id}')" style="color:var(--rust)">Delete</button>
+      </div>
+      <div class="timeline hidden" id="expand-${t.id}" style="margin-top:16px;">
+        <div class="road-line"></div>
+        <div></div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function toggleExpand(tripId){
+  const el = document.getElementById('expand-'+tripId);
+  const isHidden = el.classList.contains('hidden');
+  el.classList.toggle('hidden');
+  if(isHidden){
+    const t = trips.find(t=>t.id===tripId);
+    const wrap = el.querySelector('div:last-child');
+    wrap.innerHTML='';
+    t.stops.forEach(s=> wrap.appendChild(renderWaypointCard(s, 0, false)) );
+  }
+}
+
+function deleteTrip(tripId){
+  trips = trips.filter(t=>t.id!==tripId);
+  saveTrips();
+  renderHistory();
+}
+
+async function exportTripPDF(tripId){
+  const t = trips.find(t=>t.id===tripId);
+  if(!t) return;
+
+  if(!window.jspdf){
+    showToast("PDF library didn't load — check your internet connection and try again");
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 16;
+  let y = 20;
+
+  function newPageIfNeeded(extra){
+    if(y + extra > 280){ doc.addPage(); y = 20; }
+  }
+  function line(text, size, bold, color){
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(size);
+    doc.setTextColor(color || '#1D2027');
+    const wrapped = doc.splitTextToSize(text, pageW - marginX*2);
+    wrapped.forEach(w=>{
+      newPageIfNeeded(7);
+      doc.text(w, marginX, y);
+      y += 6.5;
+    });
+  }
+
+  line('RoadLog — Trip Report', 18, true);
+  y += 2;
+  line(`${fmtDate(t.startTime)}   ·   Vehicle: ${t.vehicleName||'Unspecified vehicle'}`, 11, false, '#555555');
+  y += 4;
+
+  doc.setDrawColor('#E8A33D'); doc.setLineWidth(0.6);
+  doc.line(marginX, y, pageW-marginX, y);
+  y += 8;
+
+  line(`Start: ${fmtTime(t.startTime)}     End: ${t.endTime?fmtTime(t.endTime):'—'}`, 11);
+  line(`Total distance: ${t.distanceKm.toFixed(1)} km`, 11);
+  line(`Total duration: ${fmtDur((t.endTime||Date.now())-t.startTime)}`, 11);
+  y += 6;
+
+  line(`Stops (${t.stops.length})`, 13, true);
+  y += 2;
+
+  t.stops.forEach((s,i)=>{
+    newPageIfNeeded(20);
+    line(`${i+1}. ${s.placeName}`, 12, true, '#9C7232');
+    line(`Arrived ${fmtTime(s.arrive)}   Left ${s.leave?fmtTime(s.leave):'—'}   Duration ${s.leave?fmtDur(s.leave-s.arrive):'—'}`, 10, false, '#444444');
+    if(s.note) line(`Note: ${s.note}`, 10, false, '#444444');
+    if(s.lat) line(`GPS: ${s.lat.toFixed(5)}, ${s.lng.toFixed(5)}`, 9, false, '#888888');
+    y += 4;
+  });
+
+  const fileName = `roadlog_${fmtDate(t.startTime).replace(/\s/g,'_')}.pdf`;
+  const blob = doc.output('blob');
+
+  // Try the native share sheet first (lets you pick WhatsApp directly)
+  try{
+    const file = new File([blob], fileName, {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'RoadLog trip report', text:`Trip report — ${fmtDate(t.startTime)}`});
+      return;
+    }
+  }catch(e){
+    if(e && e.name === 'AbortError') return; // user closed the share sheet — no need to fall back
+  }
+
+  // Fallback: just download the PDF, then you can attach it in WhatsApp manually
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('PDF saved — open WhatsApp and attach it from your files');
+}
+
+/* ---------------- Map ---------------- */
+let map = null;
+let liveMarker = null;
+let destMarker = null;
+let routeLine = null;
+let breadcrumbLine = null;
+let breadcrumbCoords = [];
+let currentRoute = null;     // {steps:[{instruction,distanceM,lat,lng,announced}], destName}
+let followNarrateOn = false;
+const ARRIVE_RADIUS_M = 35;   // close enough to count as "reached this step"
+const ANNOUNCE_RADIUS_M = 250; // distance out to give a heads-up
+
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  try{
+    speechSynthesis.cancel(); // don't queue up stale instructions
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0;
+    speechSynthesis.speak(u);
+  }catch(e){ /* speech not available — guidance still shows visually */ }
+}
+
+function describeStep(step){
+  const m = step.maneuver;
+  const name = step.name && step.name.length ? step.name : 'the road';
+  const mod = m.modifier ? m.modifier.replace('_',' ') : '';
+  switch(m.type){
+    case 'depart': return `Head ${mod||'out'} on ${name}`;
+    case 'arrive': return `Arrive at your destination`;
+    case 'turn': return `Turn ${mod} onto ${name}`;
+    case 'new name': return `Continue onto ${name}`;
+    case 'merge': return `Merge onto ${name}`;
+    case 'on ramp': return `Take the ramp onto ${name}`;
+    case 'off ramp': return `Take the exit onto ${name}`;
+    case 'fork': return `Keep ${mod} onto ${name}`;
+    case 'end of road': return `Turn ${mod} onto ${name}`;
+    case 'roundabout': case 'rotary': case 'roundabout turn': return `At the roundabout, continue onto ${name}`;
+    case 'exit roundabout': case 'exit rotary': return `Exit the roundabout onto ${name}`;
+    case 'continue': return `Continue ${mod||''} onto ${name}`.replace('  ',' ');
+    default: return `Continue onto ${name}`;
+  }
+}
+
+function buildRouteSteps(osrmSteps){
+  return osrmSteps.map(s=>({
+    instruction: describeStep(s),
+    distanceM: s.distance,
+    lat: s.maneuver.location[1],
+    lng: s.maneuver.location[0],
+    announced:false
+  }));
+}
+
+function updateNavigationGuidance(lat,lng){
+  if(!currentRoute) return;
+  const idx = currentRoute.nextStepIndex;
+  if(idx >= currentRoute.steps.length) return;
+  const target = currentRoute.steps[idx];
+  const d = haversine(lat,lng,target.lat,target.lng) * 1000; // meters
+
+  if(!target.announced && d < ANNOUNCE_RADIUS_M){
+    const roundedD = Math.max(20, Math.round(d/10)*10);
+    speak(idx===currentRoute.steps.length-1 ? target.instruction : `In ${roundedD} meters, ${target.instruction}`);
+    target.announced = true;
+  }
+  if(d < ARRIVE_RADIUS_M){
+    currentRoute.nextStepIndex++;
+    if(currentRoute.nextStepIndex >= currentRoute.steps.length){
+      speak('You have arrived');
+      followNarrateOn = false;
+      updateFollowBtn();
+      const destName = currentRoute.destName;
+      currentRoute = null;
+      autoSaveTripOnArrival(destName);
+    } else {
+      renderDirectionsList(); // refresh highlight on the now-current step
+    }
+  }
+}
+
+function autoSaveTripOnArrival(destName){
+  if(!tracking || !trip){
+    showToast(`Arrived at ${destName}`);
+    return;
+  }
+  const summaryKm = trip.distanceKm;
+  const summaryStops = trip.stops.length;
+  endTrip(); // saves the trip into history and resets the live view
+  const savedId = trips[0]?.id;
+  showToast(`Saved automatically — ${summaryKm.toFixed(1)} km, ${summaryStops} stop${summaryStops===1?'':'s'}`);
+  switchTab('history');
+  if(savedId){ setTimeout(()=>toggleExpand(savedId), 350); }
+}
+
+function toggleFollowNarrate(){
+  followNarrateOn = !followNarrateOn;
+  updateFollowBtn();
+  if(followNarrateOn){
+    if(lastFix) map.setView([lastFix.lat,lastFix.lng], 16, {animate:true});
+    if(currentRoute) speak(currentRoute.steps[currentRoute.nextStepIndex]?.instruction || '');
+  } else {
+    speechSynthesis && speechSynthesis.cancel();
+  }
+}
+function updateFollowBtn(){
+  const btn = document.getElementById('followBtn');
+  if(!btn) return;
+  btn.textContent = (followNarrateOn ? '■ Stop following' : '▶ Follow & narrate');
+  btn.classList.toggle('active', followNarrateOn);
+}
+
+function toggleDirections(){
+  const el = document.getElementById('riDirections');
+  el.classList.toggle('hidden');
+  if(!el.classList.contains('hidden')) renderDirectionsList();
+}
+function renderDirectionsList(){
+  const el = document.getElementById('riDirections');
+  if(!currentRoute || el.classList.contains('hidden')) return;
+  el.innerHTML = currentRoute.steps.map((s,i)=>`
+    <div class="ri-step ${i===currentRoute.nextStepIndex?'current':''}">
+      <div class="ri-step-dist">${s.distanceM>=1000 ? (s.distanceM/1000).toFixed(1)+' km' : Math.round(s.distanceM)+' m'}</div>
+      <div>${s.instruction}</div>
+    </div>`).join('');
+}
+
+function initMap(){
+  if(map) return;
+  if(typeof L === 'undefined'){ showToast("Map library didn't load — check your internet connection"); return; }
+  // Centred on South Africa, zoomed out enough to see the whole country
+  map = L.map('leafletMap', {zoomControl:true}).setView([-28.8, 24.7], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19,
+    attribution:'© OpenStreetMap contributors'
+  }).addTo(map);
+}
+
+function resetBreadcrumb(){
+  breadcrumbCoords = [];
+  if(breadcrumbLine && map){ map.removeLayer(breadcrumbLine); }
+  breadcrumbLine = null;
+}
+
+function updateLiveMapPosition(lat,lng){
+  if(!map) return; // map tab not opened yet this session — nothing to update
+  if(!liveMarker){
+    liveMarker = L.circleMarker([lat,lng], {radius:8, color:'#1D2027', weight:2, fillColor:'#E8A33D', fillOpacity:1}).addTo(map);
+  } else {
+    liveMarker.setLatLng([lat,lng]);
+  }
+  breadcrumbCoords.push([lat,lng]);
+  if(!breadcrumbLine){
+    breadcrumbLine = L.polyline(breadcrumbCoords, {color:'#3E8073', weight:4, opacity:0.85}).addTo(map);
+  } else {
+    breadcrumbLine.setLatLngs(breadcrumbCoords);
+  }
+  if(followNarrateOn){
+    map.setView([lat,lng], Math.max(map.getZoom(),15), {animate:true});
+  }
+  if(currentRoute){
+    updateNavigationGuidance(lat,lng);
+  }
+}
+
+function locateMe(){
+  if(!navigator.geolocation){ showToast("This browser can't access GPS"); return; }
+  showToast('Finding your location…');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude:lat, longitude:lng} = pos.coords;
+    initMap();
+    map.setView([lat,lng], 14);
+    updateLiveMapPosition(lat,lng);
+  }, err=>{
+    showToast("Couldn't get your location — " + err.message);
+  }, {enableHighAccuracy:true, timeout:15000});
+}
+
+async function geocodePlace(query){
+  // Saved places first — instant, no internet needed for these
+  const local = savedPlaces.find(p=>p.name.toLowerCase() === query.toLowerCase());
+  if(local) return {name:local.name, lat:local.lat, lng:local.lng};
+
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=za&limit=1`);
+  if(!res.ok) throw new Error('search failed');
+  const data = await res.json();
+  if(!data || data.length===0) return null;
+  return {name: data[0].display_name.split(',').slice(0,2).join(','), lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
+}
+
+async function searchDestination(){
+  const query = document.getElementById('mapDestInput').value.trim();
+  if(!query){ return; }
+  initMap();
+  showToast('Searching…');
+
+  let dest;
+  try{ dest = await geocodePlace(query); }
+  catch(e){ showToast("Couldn't search — check your internet connection"); return; }
+  if(!dest){ showToast(`Couldn't find "${query}" in South Africa`); return; }
+
+  if(destMarker) map.removeLayer(destMarker);
+  destMarker = L.circleMarker([dest.lat,dest.lng], {radius:9, color:'#1D2027', weight:2, fillColor:'#C45B3F', fillOpacity:1}).addTo(map);
+
+  // Need a starting point: last known GPS fix, or grab one now
+  let origin = lastFix;
+  if(!origin){
+    showToast('Getting your current location…');
+    origin = await new Promise(resolve=>{
+      navigator.geolocation.getCurrentPosition(
+        pos=>resolve({lat:pos.coords.latitude, lng:pos.coords.longitude}),
+        ()=>resolve(null),
+        {enableHighAccuracy:true, timeout:15000}
+      );
+    });
+  }
+
+  if(!origin){
+    showToast("Couldn't get your location — showing destination only");
+    map.setView([dest.lat,dest.lng], 12);
+    return;
+  }
+
+  try{
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${dest.lng},${dest.lat}?overview=full&geometries=geojson&steps=true`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(!data.routes || data.routes.length===0) throw new Error('no route');
+    const route = data.routes[0];
+    const latlngs = route.geometry.coordinates.map(c=>[c[1],c[0]]);
+
+    if(routeLine) map.removeLayer(routeLine);
+    routeLine = L.polyline(latlngs, {color:'#E8A33D', weight:5, opacity:0.9}).addTo(map);
+    map.fitBounds(routeLine.getBounds(), {padding:[30,30]});
+
+    currentRoute = { steps: buildRouteSteps(route.legs[0].steps), nextStepIndex:0, destName: dest.name };
+    document.getElementById('riDirections').classList.add('hidden');
+    followNarrateOn = false;
+    updateFollowBtn();
+
+    document.getElementById('riName').textContent = dest.name;
+    document.getElementById('riStats').textContent = `${(route.distance/1000).toFixed(1)} km · about ${fmtDur(route.duration*1000)} drive`;
+    document.getElementById('routeInfo').classList.remove('hidden');
+  }catch(e){
+    showToast('Route lookup failed — showing destination only');
+    map.setView([dest.lat,dest.lng], 11);
+  }
+}
+
+function clearRoute(){
+  if(routeLine){ map.removeLayer(routeLine); routeLine=null; }
+  if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
+  currentRoute = null;
+  followNarrateOn = false;
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+  document.getElementById('routeInfo').classList.add('hidden');
+  document.getElementById('riDirections').classList.add('hidden');
+  document.getElementById('mapDestInput').value = '';
+}
+
+/* ---------------- Init ---------------- */
+renderVehicleChips();
+renderHistory();
+updateLangToggleLabel();
+</script>
+</body>
+</html>
