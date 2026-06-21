@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="af">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5A623">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CivicSolar">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Civic Solar – Inspeksie</title>
+<style>
+:root{--sun:#F5A623;--sun2:#C87D00;--sky:#0A2A4A;--sky2:#1A5276;--ice:#EEF6FD;--ice2:#D0E8F5;--grey:#6C8A9E;--grey2:#B8D0E0;--green:#27AE60;--orange:#E67E22;--red:#E74C3C;--white:#fff;--r:14px;--sh:0 2px 16px rgba(10,42,74,0.10);}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--ice);color:var(--sky);min-height:100vh;overscroll-behavior:none;}
+button{cursor:pointer;font-family:inherit;}
+input,textarea,select{font-family:inherit;}
+input[type=file]{display:none;}
+.scr{display:none;}.scr.on{display:block;}
+.scr-mid{display:none;min-height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;}
+.scr-mid.on{display:flex;}
+
+/* NAME SCREEN */
+#s-name{background:linear-gradient(170deg,var(--sky) 0%,var(--sky2) 100%);}
+.logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:32px;}
+.logo-circle{width:80px;height:80px;background:var(--sun);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:0 0 0 14px rgba(245,166,35,0.18);margin-bottom:16px;}
+.logo-wrap h1{color:white;font-size:28px;font-weight:900;letter-spacing:0.5px;}
+.logo-wrap p{color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px;}
+.name-card{background:white;border-radius:20px;padding:26px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,0.22);}
+.name-card h2{font-size:14px;font-weight:800;color:var(--grey);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:6px;}
+.name-card p{font-size:13px;color:var(--grey);margin-bottom:18px;line-height:1.5;}
+.name-input{width:100%;padding:14px 16px;border:2px solid var(--ice2);border-radius:12px;font-size:18px;font-weight:600;color:var(--sky);outline:none;text-align:center;margin-bottom:14px;}
+.name-input:focus{border-color:var(--sun);}
+.btn-start{width:100%;background:linear-gradient(135deg,var(--sun),var(--sun2));color:white;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:800;box-shadow:0 4px 14px rgba(245,166,35,0.3);}
+
+/* TOP BAR */
+.top-bar{background:linear-gradient(135deg,var(--sky),var(--sky2));padding:13px 17px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,0,0,0.18);position:sticky;top:0;z-index:50;}
+.top-sun{width:36px;height:36px;background:var(--sun);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.top-info{flex:1;}
+.top-info h1{color:white;font-size:15px;font-weight:900;}
+.top-info p{color:rgba(255,255,255,0.55);font-size:11px;margin-top:1px;}
+.top-out{background:rgba(255,255,255,0.15);border:none;color:white;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:600;}
+
+/* BOTTOM NAV */
+.bot-nav{position:fixed;bottom:0;left:0;right:0;background:var(--sky);display:flex;z-index:50;box-shadow:0 -2px 10px rgba(0,0,0,0.18);}
+.bot-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 4px 8px;color:rgba(255,255,255,0.4);border:none;background:none;font-size:10px;gap:3px;}
+.bot-btn .bi{font-size:22px;line-height:1;}
+.bot-btn.on{color:var(--sun);}
+
+/* TABS */
+#s-app{padding-bottom:0;}
+.tab{display:none;padding:14px;padding-bottom:80px;}
+.tab.on{display:block;}
+
+/* CARDS */
+.card{background:white;border-radius:var(--r);box-shadow:var(--sh);padding:18px;margin-bottom:14px;}
+.card-title{font-size:11px;font-weight:800;color:var(--grey);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;}
+
+/* FIELDS */
+.field{margin-bottom:14px;}
+.field:last-child{margin-bottom:0;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+.field input[type=text],.field input[type=date],.field select,.field textarea{width:100%;padding:12px 14px;border:2px solid var(--ice2);border-radius:11px;font-size:15px;color:var(--sky);background:white;outline:none;transition:border-color 0.2s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--sun);}
+.field textarea{resize:vertical;min-height:80px;line-height:1.5;}
+
+/* CHECKLIST */
+.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cl-item{display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:11px;background:var(--ice);border:2px solid transparent;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;user-select:none;}
+.cl-item.on{background:#D5F5E3;border-color:var(--green);color:var(--green);}
+.cl-tick{font-size:17px;flex-shrink:0;}
+.prog-bar{height:6px;background:var(--ice2);border-radius:6px;overflow:hidden;margin-bottom:5px;}
+.prog-fill{height:100%;background:var(--sun);border-radius:6px;transition:width 0.3s;}
+.prog-label{font-size:11px;color:var(--grey);margin-bottom:12px;}
+
+/* CONDITION */
+.cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cond-btn{padding:12px 8px;border-radius:11px;border:2px solid var(--ice2);background:var(--ice);font-size:13px;font-weight:600;text-align:center;cursor:pointer;transition:all 0.15s;}
+.cond-btn.on-great,.cond-btn.on-ok{background:#D5F5E3;border-color:var(--green);color:var(--green);}
+.cond-btn.on-warn{background:#FEF9E7;border-color:var(--orange);color:var(--orange);}
+.cond-btn.on-bad{background:#FEE;border-color:var(--red);color:var(--red);}
+
+/* PHOTOS */
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.ph-thumb{aspect-ratio:1;border-radius:11px;overflow:hidden;position:relative;background:var(--ice2);}
+.ph-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.ph-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);color:white;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.ph-add{aspect-ratio:1;border-radius:11px;border:2px dashed var(--grey2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--grey);font-size:11px;font-weight:600;background:none;width:100%;}
+.ph-plus{font-size:30px;color:var(--sun);line-height:1;}
+.ph-count{font-size:12px;color:var(--grey);margin-top:10px;text-align:center;}
+
+/* BUTTONS */
+.btn-submit{width:100%;background:linear-gradient(135deg,var(--sun),var(--sun2));color:white;border:none;border-radius:14px;padding:17px;font-size:17px;font-weight:900;box-shadow:0 5px 18px rgba(245,166,35,0.35);display:flex;align-items:center;justify-content:center;gap:9px;}
+.btn-submit:disabled{opacity:0.6;}
+.btn-wa{width:100%;background:#25D366;color:white;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 4px 14px rgba(37,211,102,0.3);margin-bottom:10px;}
+.btn-dl{width:100%;background:linear-gradient(135deg,var(--sky),var(--sky2));color:white;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 4px 14px rgba(10,42,74,0.25);margin-bottom:10px;}
+
+/* CALENDAR */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-nav h3{font-size:15px;font-weight:800;}
+.cal-nav button{background:white;border:2px solid var(--ice2);border-radius:9px;width:36px;height:36px;font-size:18px;display:flex;align-items:center;justify-content:center;}
+.cal-hdr{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;}
+.cal-dname{text-align:center;font-size:10px;font-weight:800;color:var(--grey);padding:3px 0;text-transform:uppercase;}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day{aspect-ratio:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:600;position:relative;cursor:pointer;}
+.cal-day.empty{background:none;cursor:default;}
+.cal-day.normal{background:var(--ice);color:var(--sky);}
+.cal-day.has-r{background:var(--sky2);color:white;}
+.cal-day.today{outline:2px solid var(--sun);outline-offset:1px;}
+.cal-day.sel{background:var(--sun);color:white;}
+.cal-dot{width:5px;height:5px;background:var(--sun);border-radius:50%;position:absolute;bottom:3px;}
+.cal-day.has-r .cal-dot,.cal-day.sel .cal-dot{background:white;}
+
+/* ROWS */
+.rrow{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--ice2);cursor:pointer;}
+.rrow:last-child{border:none;}
+.rdot{width:9px;height:9px;border-radius:50%;background:var(--sun);flex-shrink:0;}
+.ri{flex:1;min-width:0;}
+.rt{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rb{font-size:11px;color:var(--grey);margin-top:2px;}
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;}
+.tok{background:#D5F5E3;color:var(--green);}
+.twarn{background:#FEF9E7;color:var(--orange);}
+.tbad{background:#FEE;color:var(--red);}
+.tnew{background:var(--ice2);color:var(--grey);}
+
+/* SEND BOX */
+.send-box{background:white;border-radius:var(--r);box-shadow:var(--sh);padding:16px;margin-bottom:14px;}
+.send-box-title{font-size:11px;font-weight:800;color:var(--grey);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;}
+.send-hint{font-size:12px;color:var(--grey);line-height:1.5;margin-top:10px;text-align:center;}
+
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;}
+.modal.on{display:flex;}
+.modal-box{background:white;border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:88vh;overflow-y:auto;}
+.modal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.modal-top h3{font-size:16px;font-weight:800;}
+.modal-close{background:var(--ice2);border:none;border-radius:50%;width:30px;height:30px;font-size:16px;display:flex;align-items:center;justify-content:center;}
+.modal-ph{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;}
+.modal-ph img{width:100%;border-radius:9px;aspect-ratio:1;object-fit:cover;cursor:pointer;}
+.modal-cl{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:14px;}
+.modal-cli{padding:8px 10px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:6px;}
+.modal-cli.on{background:#D5F5E3;}.modal-cli.off{background:var(--ice);color:var(--grey);}
+
+/* SUCCESS */
+#s-success{background:linear-gradient(170deg,var(--sky),var(--sky2));text-align:center;gap:0;}
+.sicon{font-size:90px;margin-bottom:22px;animation:pop 0.5s ease;}
+@keyframes pop{0%{transform:scale(0);}70%{transform:scale(1.2);}100%{transform:scale(1);}}
+#s-success h2{color:white;font-size:26px;font-weight:900;margin-bottom:10px;}
+#s-success .ssub{color:rgba(255,255,255,0.6);font-size:14px;margin-bottom:36px;line-height:1.5;}
+.btn-another{background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);color:white;border-radius:14px;padding:15px 32px;font-size:15px;font-weight:800;margin-bottom:12px;width:100%;max-width:300px;}
+.btn-tocal{background:none;border:none;color:rgba(255,255,255,0.6);font-size:13px;padding:8px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:36px 16px;color:var(--grey);}
+.empty .em{font-size:44px;margin-bottom:10px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--sky);color:white;padding:12px 24px;border-radius:30px;font-size:14px;font-weight:700;box-shadow:var(--sh);z-index:300;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;}
+.toast.on{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- NAME SCREEN -->
+<div id="s-name" class="scr-mid on">
+  <div class="logo-wrap">
+    <div class="logo-circle">☀️</div>
+    <h1>CIVIC SOLAR</h1>
+    <p>Site Inspeksie App</p>
+  </div>
+  <div class="name-card">
+    <h2>Jou Naam</h2>
+    <p>Tik jou volle naam in. Dit sal op elke verslag verskyn.</p>
+    <input class="name-input" id="name-inp" type="text" placeholder="bv. Jan Botha" maxlength="40" onkeydown="if(event.key==='Enter')startApp()">
+    <button class="btn-start" onclick="startApp()">Begin ➜</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="s-app" class="scr">
+  <div class="top-bar">
+    <div class="top-sun">☀️</div>
+    <div class="top-info">
+      <h1>CIVIC SOLAR</h1>
+      <p id="top-name">Werker</p>
+    </div>
+    <button class="top-out" onclick="changeName()">Wissel</button>
+  </div>
+
+  <!-- NEW INSPECTION -->
+  <div class="tab on" id="tab-new">
+    <div class="card">
+      <div class="card-title">📍 Site Inligting</div>
+      <div class="field">
+        <label>Site Naam *</label>
+        <input type="text" id="f-site" placeholder="bv. Petersen Woning" list="site-dl">
+        <datalist id="site-dl"></datalist>
+      </div>
+      <div class="field">
+        <label>Adres</label>
+        <input type="text" id="f-addr" placeholder="Straat, Stad">
+      </div>
+      <div class="field">
+        <label>Datum</label>
+        <input type="date" id="f-date">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✅ Checklist</div>
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-label" id="prog-label">0 van 10 gekontroleer</div>
+      <div class="cl-grid" id="cl-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📸 Fotos van Hierdie Site</div>
+      <div class="ph-grid" id="ph-grid"></div>
+      <input type="file" id="ph-input" accept="image/*" multiple onchange="handlePhotos(event)">
+      <div class="ph-count" id="ph-count">Geen fotos</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚡ Toestand van Sisteem</div>
+      <div class="cond-grid">
+        <button class="cond-btn" id="c-Uitstekend" onclick="setCond('Uitstekend')">✅ Uitstekend</button>
+        <button class="cond-btn" id="c-Goed"       onclick="setCond('Goed')">👍 Goed</button>
+        <button class="cond-btn" id="c-Redelik"    onclick="setCond('Redelik')">⚠️ Aandag Nodig</button>
+        <button class="cond-btn" id="c-Swak"       onclick="setCond('Swak')">🔴 Dringende Herstel</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📝 Notas</div>
+      <div class="field">
+        <textarea id="f-notes" placeholder="Probleme, herstelwerk, aanbevelings..."></textarea>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="submit-btn" onclick="submitReport()">
+      <span>💾</span> Stoor Inspeksie
+    </button>
+    <div style="height:10px;"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="tab" id="tab-cal">
+    <div class="card">
+      <div class="cal-nav">
+        <button onclick="changeMonth(-1)">‹</button>
+        <h3 id="cal-lbl"></h3>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-hdr">
+        <div class="cal-dname">So</div><div class="cal-dname">Ma</div>
+        <div class="cal-dname">Di</div><div class="cal-dname">Wo</div>
+        <div class="cal-dname">Do</div><div class="cal-dname">Vr</div>
+        <div class="cal-dname">Sa</div>
+      </div>
+      <div class="cal-days" id="cal-days"></div>
+    </div>
+
+    <!-- SEND BOX -->
+    <div class="send-box">
+      <div class="send-box-title">📤 Stuur Maand Verslag</div>
+      <button class="btn-wa" onclick="shareReport()">
+        <span>📱</span> Deel Verslag via WhatsApp / E-pos
+      </button>
+      <button class="btn-dl" onclick="downloadReport()">
+        <span>📄</span> Laai PDF af na Downloads
+      </button>
+      <div class="send-hint" id="send-hint">Kies eers die maand hierbo</div>
+    </div>
+
+    <!-- Day detail -->
+    <div id="day-sec" style="display:none;">
+      <div style="font-size:14px;font-weight:800;color:var(--sky);margin:0 0 10px;" id="day-title"></div>
+      <div class="card"><div id="day-list"></div></div>
+    </div>
+
+    <!-- Month list -->
+    <div class="card">
+      <div class="card-title" id="month-lbl">Hierdie Maand</div>
+      <div id="month-list"></div>
+    </div>
+  </div>
+
+  <nav class="bot-nav">
+    <button class="bot-btn on" id="bn-new" onclick="showTab('new')">
+      <span class="bi">➕</span><span>Nuwe Inspeksie</span>
+    </button>
+    <button class="bot-btn" id="bn-cal" onclick="showTab('cal')">
+      <span class="bi">📅</span><span>Kalender</span>
+    </button>
+  </nav>
+</div>
+
+<!-- SUCCESS -->
+<div id="s-success" class="scr-mid">
+  <div class="sicon">✅</div>
+  <h2>Inspeksie Gestoor!</h2>
+  <div class="ssub" id="success-msg"></div>
+  <button class="btn-another" onclick="anotherReport()">➕ Nog Inspeksie</button>
+  <button class="btn-tocal" onclick="goToCal()">Sien Kalender 📅</button>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal" id="det-modal">
+  <div class="modal-box">
+    <div class="modal-top">
+      <h3 id="modal-title"></h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CHECKLIST ──────────────────────────────────────────
+const CL = [
+  {id:'panels',   icon:'⚡', label:'Panele'},
+  {id:'inverter', icon:'🔧', label:'Omsetter'},
+  {id:'battery',  icon:'🔋', label:'Battery'},
+  {id:'wiring',   icon:'🔌', label:'Bedrading'},
+  {id:'mounting', icon:'🔩', label:'Montasie'},
+  {id:'clean',    icon:'🧹', label:'Skoonmaak'},
+  {id:'meter',    icon:'📊', label:'Meter'},
+  {id:'earthing', icon:'⛔', label:'Aarding'},
+  {id:'breaker',  icon:'🔐', label:'Skakelaar'},
+  {id:'cables',   icon:'📦', label:'Kabels'},
+];
+const MONTHS = ['Januarie','Februarie','Maart','April','Mei','Junie','Julie','Augustus','September','Oktober','November','Desember'];
+const COND_CLS = {Uitstekend:'on-great',Goed:'on-ok',Redelik:'on-warn',Swak:'on-bad'};
+const COND_COL = {Uitstekend:'#27AE60',Goed:'#27AE60',Redelik:'#E67E22',Swak:'#E74C3C'};
+const COND_EM  = {Uitstekend:'✅',Goed:'👍',Redelik:'⚠️',Swak:'🔴'};
+
+// ── STATE ──────────────────────────────────────────────
+let workerName = '';
+let checked    = {};
+let photos     = [];
+let condition  = '';
+let calYear    = new Date().getFullYear();
+let calMonth   = new Date().getMonth();
+let selDay     = null;
+let allRpts    = [];
+
+// ── STORAGE ────────────────────────────────────────────
+function sGet(k)    { try { const v=localStorage.getItem('cs_'+k); return v?JSON.parse(v):null; } catch(e){return null;} }
+function sSet(k,v)  { try { localStorage.setItem('cs_'+k,JSON.stringify(v)); return true; } catch(e){return false;} }
+function sList(pfx) {
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith('cs_'+pfx)) keys.push(k.replace('cs_',''));
+  }
+  return keys.sort();
+}
+
+// ── SCREENS ────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.scr,.scr-mid').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ── INIT ───────────────────────────────────────────────
+function init() {
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+  const saved = localStorage.getItem('civic_worker_name');
+  if (saved) {
+    document.getElementById('name-inp').value = saved;
+    workerName = saved;
+  }
+  show('s-name');
+}
+
+// ── NAME ───────────────────────────────────────────────
+function startApp() {
+  const v = document.getElementById('name-inp').value.trim();
+  if (!v) { toast('⚠️ Tik asseblief jou naam in'); return; }
+  workerName = v;
+  localStorage.setItem('civic_worker_name', v);
+  document.getElementById('top-name').textContent = v;
+  resetForm();
+  show('s-app');
+  showTab('new');
+}
+function changeName() { show('s-name'); }
+
+// ── TABS ───────────────────────────────────────────────
+function showTab(t) {
+  document.getElementById('tab-new').classList.toggle('on', t==='new');
+  document.getElementById('tab-cal').classList.toggle('on', t==='cal');
+  document.getElementById('bn-new').classList.toggle('on',  t==='new');
+  document.getElementById('bn-cal').classList.toggle('on',  t==='cal');
+  if (t==='cal') renderCal();
+}
+
+// ── FORM ───────────────────────────────────────────────
+function resetForm() {
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-site').value = '';
+  document.getElementById('f-addr').value = '';
+  document.getElementById('f-notes').value = '';
+  checked={}; photos=[]; condition='';
+  renderCL(); renderPH(); clearCond();
+  // Site suggestions
+  const sites = new Set(sList('r:').map(k=>{ const r=sGet(k); return r&&r.worker===workerName?r.siteName:null; }).filter(Boolean));
+  document.getElementById('site-dl').innerHTML = [...sites].map(s=>`<option value="${esc(s)}">`).join('');
+}
+
+// ── CHECKLIST ──────────────────────────────────────────
+function renderCL() {
+  document.getElementById('cl-grid').innerHTML = CL.map(c=>
+    `<div class="cl-item" id="cl-${c.id}" onclick="toggleCL('${c.id}')">
+      <span class="cl-tick">⬜</span><span>${c.icon} ${c.label}</span>
+    </div>`).join('');
+  updateProg();
+}
+function toggleCL(id) {
+  checked[id]=!checked[id];
+  const el=document.getElementById('cl-'+id);
+  el.querySelector('.cl-tick').textContent=checked[id]?'✅':'⬜';
+  el.classList.toggle('on',!!checked[id]);
+  updateProg();
+}
+function updateProg() {
+  const done=CL.filter(c=>checked[c.id]).length;
+  document.getElementById('prog-fill').style.width=Math.round(done/CL.length*100)+'%';
+  document.getElementById('prog-label').textContent=done+' van '+CL.length+' gekontroleer';
+}
+
+// ── CONDITION ──────────────────────────────────────────
+function setCond(v) {
+  condition=v; clearCond();
+  document.getElementById('c-'+v).classList.add(COND_CLS[v]);
+}
+function clearCond() { document.querySelectorAll('.cond-btn').forEach(b=>b.className='cond-btn'); }
+
+// ── PHOTOS ─────────────────────────────────────────────
+function handlePhotos(e) {
+  Array.from(e.target.files).forEach(f=>compress(f,b64=>{photos.push(b64);renderPH();}));
+  e.target.value='';
+}
+function compress(file,cb) {
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1,900/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*scale); c.height=Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      cb(c.toDataURL('image/jpeg',0.65));
+    };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(file);
+}
+function renderPH() {
+  document.getElementById('ph-grid').innerHTML=
+    photos.map((src,i)=>`<div class="ph-thumb"><img src="${src}"><button class="ph-del" onclick="rmPhoto(${i})">✕</button></div>`).join('')+
+    `<button class="ph-add" onclick="document.getElementById('ph-input').click()"><span class="ph-plus">+</span><span>Foto</span></button>`;
+  document.getElementById('ph-count').textContent=photos.length===0?'Geen fotos':photos.length+(photos.length===1?' foto':' fotos')+' bygevoeg';
+}
+function rmPhoto(i) { photos.splice(i,1); renderPH(); }
+
+// ── SUBMIT ─────────────────────────────────────────────
+function submitReport() {
+  const site=document.getElementById('f-site').value.trim();
+  if (!site) { toast('⚠️ Voer die site naam in'); return; }
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true; btn.innerHTML='<span>⏳</span> Stoor...';
+  const ts=Date.now();
+  const rpt={
+    siteName: site,
+    siteAddr: document.getElementById('f-addr').value.trim(),
+    date:     document.getElementById('f-date').value,
+    worker:   workerName,
+    checklist:CL.filter(c=>checked[c.id]).map(c=>c.id),
+    condition:condition,
+    notes:    document.getElementById('f-notes').value.trim(),
+    photos:   [...photos],
+    timestamp:ts,
+  };
+  const ok=sSet('r:'+ts, rpt);
+  btn.disabled=false; btn.innerHTML='<span>💾</span> Stoor Inspeksie';
+  if (ok) {
+    document.getElementById('success-msg').textContent=site+'\n'+workerName+' · '+fmtDate(rpt.date);
+    show('s-success');
+  } else { toast('❌ Kon nie stoor nie.'); }
+}
+function anotherReport() { resetForm(); show('s-app'); showTab('new'); }
+function goToCal()       { show('s-app'); showTab('cal'); }
+
+// ── CALENDAR ───────────────────────────────────────────
+function loadRpts() {
+  allRpts = sList('r:').map(k=>{ const r=sGet(k); return r?{...r,_key:k}:null; })
+    .filter(r=>r&&r.worker===workerName)
+    .sort((a,b)=>b.timestamp-a.timestamp);
+}
+function renderCal() {
+  loadRpts();
+  document.getElementById('cal-lbl').textContent=MONTHS[calMonth]+' '+calYear;
+
+  const rDays=new Set(allRpts.filter(r=>{const d=new Date(r.date);return d.getFullYear()===calYear&&d.getMonth()===calMonth;}).map(r=>parseInt(r.date.split('-')[2])));
+  const today=new Date();
+  const first=new Date(calYear,calMonth,1).getDay();
+  const dim=new Date(calYear,calMonth+1,0).getDate();
+
+  let html='';
+  for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isT=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    const hasR=rDays.has(d);
+    const isSel=selDay===ds;
+    let cls='cal-day '+(isSel?'sel':hasR?'has-r':'normal')+(isT?' today':'');
+    html+=`<div class="${cls}" onclick="selCalDay('${ds}')">${d}${hasR&&!isSel?'<div class="cal-dot"></div>':''}</div>`;
+  }
+  document.getElementById('cal-days').innerHTML=html;
+
+  const mRpts=allRpts.filter(r=>{const d=new Date(r.date);return d.getFullYear()===calYear&&d.getMonth()===calMonth;});
+  document.getElementById('month-lbl').textContent=MONTHS[calMonth]+' – '+mRpts.length+' inspeksie'+(mRpts.length===1?'':'s');
+  document.getElementById('month-list').innerHTML=mRpts.length
+    ? mRpts.map(r=>`<div class="rrow" onclick="openDet('${r._key}')"><div class="rdot"></div><div class="ri"><div class="rt">${esc(r.siteName)}</div><div class="rb">${fmtDate(r.date)} · ${(r.photos||[]).length} foto(s) · ✅ ${(r.checklist||[]).length}/10</div></div>${ctag(r.condition)}</div>`).join('')
+    : '<div class="empty"><div class="em">📭</div><p>Geen inspeksies.</p></div>';
+
+  // Update send hint
+  document.getElementById('send-hint').textContent = mRpts.length + ' inspeksie'+(mRpts.length===1?'':'s')+' vir '+MONTHS[calMonth]+' '+calYear;
+
+  if (selDay) renderDaySec();
+}
+function changeMonth(d) {
+  calMonth+=d;
+  if(calMonth>11){calMonth=0;calYear++;}
+  if(calMonth<0) {calMonth=11;calYear--;}
+  selDay=null;
+  document.getElementById('day-sec').style.display='none';
+  renderCal();
+}
+function selCalDay(ds) {
+  selDay=ds; renderCal();
+}
+function renderDaySec() {
+  const rpts=allRpts.filter(r=>r.date===selDay);
+  const sec=document.getElementById('day-sec');
+  if (!rpts.length) { sec.style.display='none'; return; }
+  sec.style.display='block';
+  document.getElementById('day-title').textContent=fmtDate(selDay)+' ('+rpts.length+')';
+  document.getElementById('day-list').innerHTML=rpts.map(r=>
+    `<div class="rrow" onclick="openDet('${r._key}')"><div class="rdot"></div><div class="ri"><div class="rt">${esc(r.siteName)}</div><div class="rb">${(r.photos||[]).length} foto(s) · ✅ ${(r.checklist||[]).length}/10</div></div>${ctag(r.condition)}</div>`
+  ).join('');
+}
+
+// ── DETAIL MODAL ───────────────────────────────────────
+function openDet(key) {
+  const r=sGet(key); if(!r) return;
+  const done=r.checklist||[];
+  document.getElementById('modal-title').textContent=r.siteName;
+  document.getElementById('modal-body').innerHTML=`
+    <div style="font-size:12px;color:var(--grey);margin-bottom:14px;">📅 ${fmtDate(r.date)} · 👷 ${esc(r.worker)} · ${ctag(r.condition)}</div>
+    ${r.siteAddr?`<div style="font-size:13px;color:var(--grey);margin-bottom:14px;">📍 ${esc(r.siteAddr)}</div>`:''}
+    ${(r.photos||[]).length?`<div class="card-title" style="margin-bottom:8px;">📸 Fotos (${r.photos.length})</div><div class="modal-ph">${r.photos.map(p=>`<img src="${p}" onclick="bigPhoto('${p}')" loading="lazy">`).join('')}</div>`:''}
+    <div class="card-title" style="margin-bottom:8px;">✅ Checklist (${done.length}/10)</div>
+    <div class="modal-cl">${CL.map(c=>`<div class="modal-cli ${done.includes(c.id)?'on':'off'}">${done.includes(c.id)?'✅':'⬜'} ${c.icon} ${c.label}</div>`).join('')}</div>
+    ${r.notes?`<div class="card-title" style="margin-bottom:8px;">📝 Notas</div><p style="font-size:14px;line-height:1.6;background:var(--ice);border-radius:10px;padding:12px;">${esc(r.notes)}</p>`:''}
+  `;
+  document.getElementById('det-modal').classList.add('on');
+}
+function closeModal() { document.getElementById('det-modal').classList.remove('on'); }
+function bigPhoto(src) {
+  const w=window.open('');
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${src}" style="max-width:100%;max-height:100vh;"></body></html>`);
+}
+
+// ── BUILD REPORT HTML ──────────────────────────────────
+function buildReportHTML() {
+  const rpts=allRpts.filter(r=>{const d=new Date(r.date);return d.getFullYear()===calYear&&d.getMonth()===calMonth;})
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if (!rpts.length) return null;
+
+  let pages='';
+  rpts.forEach((r,idx)=>{
+    const done=r.checklist||[];
+    const clRows=CL.map(c=>{
+      const ok=done.includes(c.id);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;background:${ok?'#D5F5E3':'#f5f5f5'};margin-bottom:5px;">
+        <span style="font-size:15px;">${ok?'✅':'⬜'}</span>
+        <span style="font-size:13px;color:${ok?'#27AE60':'#999'};">${c.icon} ${c.label}</span>
+      </div>`;
+    }).join('');
+    const phRows=(r.photos||[]).map(p=>`<img src="${p}" style="width:100%;border-radius:8px;border:1px solid #ddd;display:block;margin-bottom:8px;">`).join('');
+    const cc=COND_COL[r.condition]||'#888';
+
+    pages+=`<div style="page-break-after:${idx<rpts.length-1?'always':'auto'};padding:20px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:14px;border-bottom:3px solid #F5A623;">
+        <div style="width:52px;height:52px;background:#F5A623;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">☀️</div>
+        <div><div style="font-size:20px;font-weight:900;color:#0A2A4A;">CIVIC SOLAR</div><div style="font-size:12px;color:#888;">Site Inspeksie Verslag</div></div>
+        <div style="margin-left:auto;text-align:right;"><div style="font-size:11px;color:#888;">${MONTHS[calMonth]} ${calYear}</div><div style="font-size:11px;color:#888;">Verslag ${idx+1} van ${rpts.length}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+        <div style="background:#f5f5f5;border-radius:9px;padding:12px;"><div style="font-size:10px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Site Naam</div><div style="font-size:15px;font-weight:800;color:#0A2A4A;">${esc(r.siteName)}</div></div>
+        <div style="background:#f5f5f5;border-radius:9px;padding:12px;"><div style="font-size:10px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Werker</div><div style="font-size:15px;font-weight:800;color:#0A2A4A;">${esc(r.worker)}</div></div>
+        <div style="background:#f5f5f5;border-radius:9px;padding:12px;"><div style="font-size:10px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Datum</div><div style="font-size:14px;font-weight:600;color:#0A2A4A;">${fmtDate(r.date)}</div></div>
+        <div style="background:${cc};border-radius:9px;padding:12px;"><div style="font-size:10px;color:rgba(255,255,255,0.8);text-transform:uppercase;font-weight:700;margin-bottom:4px;">Toestand</div><div style="font-size:14px;font-weight:800;color:white;">${r.condition||'Nie Aangedui'}</div></div>
+        ${r.siteAddr?`<div style="background:#f5f5f5;border-radius:9px;padding:12px;grid-column:span 2;"><div style="font-size:10px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Adres</div><div style="font-size:13px;color:#0A2A4A;">${esc(r.siteAddr)}</div></div>`:''}
+      </div>
+      <div style="margin-bottom:18px;">
+        <div style="font-size:12px;font-weight:800;color:#0A2A4A;text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;">Inspeksie Checklist — ${done.length} van 10 gekontroleer</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">${clRows}</div>
+      </div>
+      ${r.notes?`<div style="margin-bottom:18px;"><div style="font-size:12px;font-weight:800;color:#0A2A4A;text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;">Notas</div><div style="background:#fffbf0;padding:14px;border-radius:9px;font-size:13px;line-height:1.6;border-left:4px solid #F5A623;">${esc(r.notes)}</div></div>`:''}
+      ${phRows?`<div><div style="font-size:12px;font-weight:800;color:#0A2A4A;text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;">Fotos (${r.photos.length})</div><div style="columns:2;gap:8px;">${phRows}</div></div>`:'<div style="color:#aaa;font-size:13px;">Geen fotos.</div>'}
+      <div style="margin-top:24px;padding-top:12px;border-top:1px solid #eee;display:flex;justify-content:space-between;">
+        <div style="font-size:11px;color:#aaa;">Civic Solar Smart Energy · 016 110 0471</div>
+        <div style="font-size:11px;color:#aaa;">${new Date().toLocaleDateString('af-ZA')}</div>
+      </div>
+    </div>`;
+  });
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>CivicSolar_${workerName.replace(/\s/g,'_')}_${MONTHS[calMonth]}_${calYear}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Segoe UI',sans-serif;background:white;}@media print{@page{margin:10mm;}}</style>
+  </head><body>${pages}</body></html>`;
+}
+
+// ── SHARE (Native) ─────────────────────────────────────
+async function shareReport() {
+  loadRpts();
+  const html = buildReportHTML();
+  if (!html) { toast('Geen inspeksies hierdie maand.'); return; }
+
+  const fname = 'CivicSolar_'+workerName.replace(/\s/g,'_')+'_'+MONTHS[calMonth]+'_'+calYear+'.html';
+
+  // Try Web Share API (works on Android as real app)
+  if (navigator.share) {
+    try {
+      const blob = new Blob([html], {type:'text/html'});
+      const file = new File([blob], fname, {type:'text/html'});
+
+      // Check if file sharing is supported
+      if (navigator.canShare && navigator.canShare({files:[file]})) {
+        await navigator.share({
+          title: 'Civic Solar – '+MONTHS[calMonth]+' '+calYear,
+          text:  workerName+' se inspeksie verslag vir '+MONTHS[calMonth]+' '+calYear,
+          files: [file],
+        });
+        return;
+      } else {
+        // Share without file — just text + link
+        const rpts=allRpts.filter(r=>{const d=new Date(r.date);return d.getFullYear()===calYear&&d.getMonth()===calMonth;});
+        const txt = buildWhatsAppText(rpts);
+        await navigator.share({ title:'Civic Solar Verslag', text:txt });
+        return;
+      }
+    } catch(e) {
+      if (e.name !== 'AbortError') console.log('Share error:', e);
+    }
+  }
+
+  // Fallback — WhatsApp URL
+  const rpts=allRpts.filter(r=>{const d=new Date(r.date);return d.getFullYear()===calYear&&d.getMonth()===calMonth;});
+  const txt=buildWhatsAppText(rpts);
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+
+// ── DOWNLOAD ───────────────────────────────────────────
+function downloadReport() {
+  loadRpts();
+  const html = buildReportHTML();
+  if (!html) { toast('Geen inspeksies hierdie maand.'); return; }
+  const fname = 'CivicSolar_'+workerName.replace(/\s/g,'_')+'_'+MONTHS[calMonth]+'_'+calYear+'.html';
+  const blob = new Blob([html], {type:'text/html'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('✅ Verslag afgelaai na Downloads!');
+}
+
+// ── WHATSAPP TEXT ──────────────────────────────────────
+function buildWhatsAppText(rpts) {
+  rpts = rpts.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const lines=['☀️ *CIVIC SOLAR – VERSLAG*','─────────────────────────','👷 *'+workerName+'*','📅 *'+MONTHS[calMonth]+' '+calYear+'*','📋 Inspeksies: *'+rpts.length+'*',''];
+  rpts.forEach((r,i)=>{
+    const d=new Date(r.date+'T00:00:00').toLocaleDateString('af-ZA',{day:'numeric',month:'short'});
+    lines.push((i+1)+'. *'+r.siteName+'*');
+    lines.push('   '+d+' · '+(COND_EM[r.condition]||'❓')+' '+(r.condition||'')+' · '+(r.checklist||[]).length+'/10 · '+(r.photos||[]).length+' fotos');
+    if(r.notes) lines.push('   📝 '+r.notes);
+  });
+  lines.push('','_Civic Solar Smart Energy · 016 110 0471_');
+  return lines.join('\n');
+}
+
+// ── HELPERS ────────────────────────────────────────────
+function ctag(c) {
+  const m={Uitstekend:'tok',Goed:'tok',Redelik:'twarn',Swak:'tbad'};
+  return `<span class="tag ${m[c]||'tnew'}">${c||'Onseker'}</span>`;
+}
+function fmtDate(ds) {
+  if(!ds) return '';
+  try { return new Date(ds+'T00:00:00').toLocaleDateString('af-ZA',{year:'numeric',month:'long',day:'numeric'}); }
+  catch(e){return ds;}
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2800);
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
