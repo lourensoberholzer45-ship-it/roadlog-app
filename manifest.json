@@ -1,0 +1,26 @@
+{
+  "name": "RoadLog",
+  "short_name": "RoadLog",
+  "description": "Automatic stop tracking and trip logbook for daily drives",
+  "start_url": "/roadlog-app/",
+  "scope": "/roadlog-app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1D2027",
+  "theme_color": "#1D2027",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
